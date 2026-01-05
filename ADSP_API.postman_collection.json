@@ -1,0 +1,1080 @@
+{
+	"info": {
+		"_postman_id": "adsp-complete-collection-v2",
+		"name": "ADSP - Complete API Collection v2.0",
+		"description": "Advanced Dynamic Survey Platform - Complete API with Authentication, RBAC, Organizations, User Management, Surveys, and Public Access",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "0. CSRF Token",
+			"description": "Get CSRF token for all state-changing requests",
+			"item": [
+				{
+					"name": "Get CSRF Token",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"    const response = pm.response.json();",
+									"    pm.environment.set('csrftoken', response.csrfToken);",
+									"    console.log('CSRF Token saved:', response.csrfToken);",
+									"    ",
+									"    // Also try to get from cookie",
+									"    var xsrfCookie = pm.cookies.get('csrftoken');",
+									"    if (xsrfCookie) {",
+									"        pm.environment.set('csrftoken', xsrfCookie);",
+									"        console.log('CSRF Token from cookie:', xsrfCookie);",
+									"    }",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/v1/auth/csrf/",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "auth", "csrf", ""]
+						},
+						"description": "Get CSRF token. Call this FIRST before any POST/PUT/DELETE requests. Token is saved to environment variable."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "1. Authentication (Clients)",
+			"description": "Session-based authentication for platform clients (admins, analysts, viewers)",
+			"item": [
+				{
+					"name": "Register New Client",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 201) {",
+									"    const response = pm.response.json();",
+									"    pm.environment.set('user_id', response.user.id);",
+									"    console.log('User registered:', response.user.username);",
+									"    console.log('Note: User has NO permissions until admin assigns organization and role');",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "X-CSRFToken",
+								"value": "{{csrftoken}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"username\": \"demo_user\",\n  \"email\": \"user@example.com\",\n  \"password\": \"SecurePass123!\",\n  \"password_confirm\": \"SecurePass123!\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/auth/register/",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "auth", "register", ""]
+						},
+						"description": "Register a new client account. Auto-login after registration. NOTE: User has NO organization or permissions until assigned by admin."
+					},
+					"response": []
+				},
+				{
+					"name": "Login",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Login successful', function() {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"if (pm.response.code === 200) {",
+									"    const response = pm.response.json();",
+									"    console.log('Logged in as:', response.user.username);",
+									"    console.log('Organization:', response.user.organization_name || 'None');",
+									"    console.log('Groups:', response.user.groups);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "X-CSRFToken",
+								"value": "{{csrftoken}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"username\": \"{{username}}\",\n  \"password\": \"{{password}}\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/auth/login/",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "auth", "login", ""]
+						},
+						"description": "Login with username and password. Returns session cookie."
+					},
+					"response": []
+				},
+				{
+					"name": "Get My Profile",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/v1/auth/profile/",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "auth", "profile", ""]
+						},
+						"description": "Get current authenticated user's profile and permissions"
+					},
+					"response": []
+				},
+				{
+					"name": "Update Profile",
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "X-CSRFToken",
+								"value": "{{csrftoken}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"newemail@example.com\",\n  \"first_name\": \"John\",\n  \"last_name\": \"Doe\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/auth/profile/",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "auth", "profile", ""]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Logout",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "X-CSRFToken",
+								"value": "{{csrftoken}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/v1/auth/logout/",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "auth", "logout", ""]
+						},
+						"description": "Logout and destroy session"
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "2. Organizations (Admin Only)",
+			"description": "Organization management - requires survey_admins role",
+			"item": [
+				{
+					"name": "List Organizations",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/v1/auth/organizations/",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "auth", "organizations", ""]
+						},
+						"description": "List all organizations. Requires survey_admins role."
+					},
+					"response": []
+				},
+				{
+					"name": "Create Organization",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 201) {",
+									"    const response = pm.response.json();",
+									"    pm.environment.set('org_id', response.id);",
+									"    console.log('Organization created:', response.name, '(', response.id, ')');",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "X-CSRFToken",
+								"value": "{{csrftoken}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Acme Corporation\",\n  \"description\": \"Main organization for Acme Corp\",\n  \"is_active\": true\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/auth/organizations/",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "auth", "organizations", ""]
+						},
+						"description": "Create a new organization. Requires survey_admins role."
+					},
+					"response": []
+				},
+				{
+					"name": "Get Organization Details",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/v1/auth/organizations/{{org_id}}/",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "auth", "organizations", "{{org_id}}", ""]
+						},
+						"description": "Get organization details by ID"
+					},
+					"response": []
+				},
+				{
+					"name": "Update Organization",
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "X-CSRFToken",
+								"value": "{{csrftoken}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"description\": \"Updated organization description\",\n  \"is_active\": true\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/auth/organizations/{{org_id}}/",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "auth", "organizations", "{{org_id}}", ""]
+						},
+						"description": "Update organization details"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Organization Users",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/v1/auth/organizations/{{org_id}}/users/",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "auth", "organizations", "{{org_id}}", "users", ""]
+						},
+						"description": "Get all users in this organization"
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Organization",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "X-CSRFToken",
+								"value": "{{csrftoken}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/v1/auth/organizations/{{org_id}}/",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "auth", "organizations", "{{org_id}}", ""]
+						},
+						"description": "Delete organization (CASCADE deletes all users!)"
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "3. User Management (Admin Only)",
+			"description": "User management within organizations - requires survey_admins role",
+			"item": [
+				{
+					"name": "List All Users",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/v1/auth/users/",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "auth", "users", ""]
+						},
+						"description": "List all users. Requires survey_admins role."
+					},
+					"response": []
+				},
+				{
+					"name": "List Users by Organization",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/v1/auth/users/?organization={{org_id}}",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "auth", "users", ""],
+							"query": [
+								{
+									"key": "organization",
+									"value": "{{org_id}}"
+								}
+							]
+						},
+						"description": "Filter users by organization ID"
+					},
+					"response": []
+				},
+				{
+					"name": "Create User with Role",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 201) {",
+									"    const response = pm.response.json();",
+									"    pm.environment.set('managed_user_id', response.id);",
+									"    console.log('User created:', response.username);",
+									"    console.log('Organization:', response.organization);",
+									"    console.log('Groups:', response.groups);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "X-CSRFToken",
+								"value": "{{csrftoken}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"username\": \"john.analyst\",\n  \"email\": \"john@acme.com\",\n  \"password\": \"SecurePass123!\",\n  \"first_name\": \"John\",\n  \"last_name\": \"Analyst\",\n  \"organization\": \"{{org_id}}\",\n  \"role\": \"survey_analysts\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/auth/users/",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "auth", "users", ""]
+						},
+						"description": "Create user with organization and role. Role options: survey_admins, survey_analysts, survey_viewers"
+					},
+					"response": []
+				},
+				{
+					"name": "Get User Details",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/v1/auth/users/{{managed_user_id}}/",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "auth", "users", "{{managed_user_id}}", ""]
+						},
+						"description": "Get user details by ID"
+					},
+					"response": []
+				},
+				{
+					"name": "Update User",
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "X-CSRFToken",
+								"value": "{{csrftoken}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"first_name\": \"Jane\",\n  \"last_name\": \"Smith\",\n  \"role\": \"survey_admins\",\n  \"is_active\": true\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/auth/users/{{managed_user_id}}/",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "auth", "users", "{{managed_user_id}}", ""]
+						},
+						"description": "Update user details. Including 'role' will replace all groups."
+					},
+					"response": []
+				},
+				{
+					"name": "Assign Role to User",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "X-CSRFToken",
+								"value": "{{csrftoken}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"role\": \"survey_analysts\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/auth/users/{{managed_user_id}}/assign_role/",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "auth", "users", "{{managed_user_id}}", "assign_role", ""]
+						},
+						"description": "Assign RBAC role to user. Options: survey_admins, survey_analysts, survey_viewers"
+					},
+					"response": []
+				},
+				{
+					"name": "Assign Organization to User",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "X-CSRFToken",
+								"value": "{{csrftoken}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"organization_id\": \"{{org_id}}\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/auth/users/{{managed_user_id}}/assign_organization/",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "auth", "users", "{{managed_user_id}}", "assign_organization", ""]
+						},
+						"description": "Assign user to an organization"
+					},
+					"response": []
+				},
+				{
+					"name": "Delete User",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "X-CSRFToken",
+								"value": "{{csrftoken}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/v1/auth/users/{{managed_user_id}}/",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "auth", "users", "{{managed_user_id}}", ""]
+						},
+						"description": "Delete user"
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "4. Surveys (Authenticated - Clients Only)",
+			"description": "Survey management endpoints - requires authentication and appropriate permissions",
+			"item": [
+				{
+					"name": "List All Surveys",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/v1/surveys/?page=1",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "surveys", ""],
+							"query": [
+								{
+									"key": "page",
+									"value": "1"
+								}
+							]
+						},
+						"description": "List all surveys (paginated). Requires authentication."
+					},
+					"response": []
+				},
+				{
+					"name": "Create Survey with Sections & Fields",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 201) {",
+									"    const response = pm.response.json();",
+									"    pm.environment.set('survey_id', response.id);",
+									"    ",
+									"    // Save first section and field IDs",
+									"    if (response.sections && response.sections.length > 0) {",
+									"        pm.environment.set('section_id', response.sections[0].id);",
+									"        if (response.sections[0].fields && response.sections[0].fields.length > 0) {",
+									"            pm.environment.set('field_id', response.sections[0].fields[0].id);",
+									"        }",
+									"    }",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "X-CSRFToken",
+								"value": "{{csrftoken}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"title\": \"Customer Satisfaction Survey 2026\",\n  \"description\": \"Annual customer feedback and satisfaction measurement\",\n  \"is_active\": true,\n  \"sections\": [\n    {\n      \"title\": \"Personal Information\",\n      \"description\": \"Basic demographic information\",\n      \"order\": 0,\n      \"logic_rules\": {},\n      \"fields\": [\n        {\n          \"field_type\": \"text\",\n          \"label\": \"Full Name\",\n          \"placeholder\": \"Enter your full name\",\n          \"is_required\": true,\n          \"order\": 0\n        },\n        {\n          \"field_type\": \"email\",\n          \"label\": \"Email Address\",\n          \"placeholder\": \"your@email.com\",\n          \"is_required\": true,\n          \"is_sensitive\": true,\n          \"order\": 1\n        },\n        {\n          \"field_type\": \"select\",\n          \"label\": \"Country\",\n          \"options\": [\n            {\"value\": \"usa\", \"label\": \"United States\"},\n            {\"value\": \"canada\", \"label\": \"Canada\"},\n            {\"value\": \"uk\", \"label\": \"United Kingdom\"},\n            {\"value\": \"other\", \"label\": \"Other\"}\n          ],\n          \"is_required\": true,\n          \"order\": 2\n        }\n      ]\n    },\n    {\n      \"title\": \"Satisfaction Rating\",\n      \"description\": \"Rate your experience\",\n      \"order\": 1,\n      \"logic_rules\": {},\n      \"fields\": [\n        {\n          \"field_type\": \"rating\",\n          \"label\": \"Overall Satisfaction\",\n          \"help_text\": \"Rate from 1 (very dissatisfied) to 5 (very satisfied)\",\n          \"min_value\": 1,\n          \"max_value\": 5,\n          \"is_required\": true,\n          \"order\": 0\n        },\n        {\n          \"field_type\": \"textarea\",\n          \"label\": \"Additional Comments\",\n          \"placeholder\": \"Share your thoughts and suggestions...\",\n          \"is_required\": false,\n          \"order\": 1\n        }\n      ]\n    }\n  ]\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/surveys/",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "surveys", ""]
+						},
+						"description": "Create a new survey with nested sections and fields. Requires survey_admins or survey_analysts role."
+					},
+					"response": []
+				},
+				{
+					"name": "Get Survey Details (Cached)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/v1/surveys/{{survey_id}}/",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "surveys", "{{survey_id}}", ""]
+						},
+						"description": "Retrieve full survey details with sections and fields. Uses Redis caching."
+					},
+					"response": []
+				},
+				{
+					"name": "Update Survey",
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "X-CSRFToken",
+								"value": "{{csrftoken}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"title\": \"Updated Survey Title\",\n  \"description\": \"Updated description\",\n  \"is_active\": false\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/surveys/{{survey_id}}/",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "surveys", "{{survey_id}}", ""]
+						},
+						"description": "Update survey metadata. Invalidates cache."
+					},
+					"response": []
+				},
+				{
+					"name": "Duplicate Survey",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "X-CSRFToken",
+								"value": "{{csrftoken}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/v1/surveys/{{survey_id}}/duplicate/",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "surveys", "{{survey_id}}", "duplicate", ""]
+						},
+						"description": "Create a copy of an existing survey with all sections and fields"
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Survey (Soft Delete)",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "X-CSRFToken",
+								"value": "{{csrftoken}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/v1/surveys/{{survey_id}}/",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "surveys", "{{survey_id}}", ""]
+						},
+						"description": "Soft delete (sets is_active=false). Requires survey_admins role."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "5. Sections (Authenticated)",
+			"item": [
+				{
+					"name": "List Sections",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/v1/surveys/{{survey_id}}/sections/",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "surveys", "{{survey_id}}", "sections", ""]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Create Section",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "X-CSRFToken",
+								"value": "{{csrftoken}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"title\": \"Demographics\",\n  \"description\": \"Demographic information\",\n  \"order\": 2,\n  \"logic_rules\": {},\n  \"fields\": [\n    {\n      \"field_type\": \"number\",\n      \"label\": \"Age\",\n      \"min_value\": 18,\n      \"max_value\": 100,\n      \"is_required\": true,\n      \"order\": 0\n    }\n  ]\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/surveys/{{survey_id}}/sections/",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "surveys", "{{survey_id}}", "sections", ""]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update Section",
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "X-CSRFToken",
+								"value": "{{csrftoken}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"title\": \"Updated Section Title\",\n  \"order\": 1\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/surveys/{{survey_id}}/sections/{{section_id}}/",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "surveys", "{{survey_id}}", "sections", "{{section_id}}", ""]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Section",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "X-CSRFToken",
+								"value": "{{csrftoken}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/v1/surveys/{{survey_id}}/sections/{{section_id}}/",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "surveys", "{{survey_id}}", "sections", "{{section_id}}", ""]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "6. Fields (Authenticated)",
+			"item": [
+				{
+					"name": "List Fields",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/v1/surveys/{{survey_id}}/sections/{{section_id}}/fields/",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "surveys", "{{survey_id}}", "sections", "{{section_id}}", "fields", ""]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Create Field",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "X-CSRFToken",
+								"value": "{{csrftoken}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"field_type\": \"checkbox\",\n  \"label\": \"Subscribe to newsletter\",\n  \"is_required\": false,\n  \"order\": 5\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/surveys/{{survey_id}}/sections/{{section_id}}/fields/",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "surveys", "{{survey_id}}", "sections", "{{section_id}}", "fields", ""]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update Field",
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "X-CSRFToken",
+								"value": "{{csrftoken}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"label\": \"Updated Field Label\",\n  \"is_required\": true\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/surveys/{{survey_id}}/sections/{{section_id}}/fields/{{field_id}}/",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "surveys", "{{survey_id}}", "sections", "{{section_id}}", "fields", "{{field_id}}", ""]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "7. Public API (No Auth - Survey Takers)",
+			"description": "Public endpoints for survey takers - NO AUTHENTICATION REQUIRED",
+			"item": [
+				{
+					"name": "Get Survey (Public)",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/v1/public/surveys/{{survey_id}}/",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "public", "surveys", "{{survey_id}}", ""]
+						},
+						"description": "Public endpoint to retrieve survey for filling out. No authentication required."
+					},
+					"response": []
+				},
+				{
+					"name": "Save Partial Response (Auto-save)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 201 || pm.response.code === 200) {",
+									"    const response = pm.response.json();",
+									"    pm.environment.set('session_token', response.session_token);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"session_token\": \"{{session_token}}\",\n  \"data\": {\n    \"field_uuid_1\": \"John Doe\",\n    \"field_uuid_2\": \"john.doe@example.com\"\n  },\n  \"last_section_id\": \"section_uuid\",\n  \"last_field_id\": \"field_uuid_2\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/public/surveys/{{survey_id}}/partial/",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "public", "surveys", "{{survey_id}}", "partial", ""]
+						},
+						"description": "Save progress (heartbeat). Returns session_token for resuming later."
+					},
+					"response": []
+				},
+				{
+					"name": "Get Partial Response",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/v1/public/surveys/{{survey_id}}/partial/?session_token={{session_token}}",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "public", "surveys", "{{survey_id}}", "partial", ""],
+							"query": [
+								{
+									"key": "session_token",
+									"value": "{{session_token}}"
+								}
+							]
+						},
+						"description": "Resume survey - retrieve saved progress"
+					},
+					"response": []
+				},
+				{
+					"name": "Submit Survey (Final)",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"data\": {\n    \"field_uuid_1\": \"John Doe\",\n    \"field_uuid_2\": \"john.doe@example.com\",\n    \"field_uuid_3\": \"usa\",\n    \"field_uuid_4\": 5,\n    \"field_uuid_5\": \"Great service and support!\"\n  },\n  \"session_token\": \"{{session_token}}\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/public/surveys/{{survey_id}}/submit/",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "public", "surveys", "{{survey_id}}", "submit", ""]
+						},
+						"description": "Final survey submission with validation. Cleans up partial response."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "8. Responses (Authenticated - Admins/Analysts)",
+			"description": "View and export survey responses - requires appropriate permissions",
+			"item": [
+				{
+					"name": "List Responses",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/v1/surveys/{{survey_id}}/responses/?page=1",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "surveys", "{{survey_id}}", "responses", ""],
+							"query": [
+								{
+									"key": "page",
+									"value": "1"
+								}
+							]
+						},
+						"description": "List all responses for a survey (paginated)"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Response Details",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/v1/surveys/{{survey_id}}/responses/{{response_id}}/",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "surveys", "{{survey_id}}", "responses", "{{response_id}}", ""]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Export Responses to CSV (Async)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "X-CSRFToken",
+								"value": "{{csrftoken}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/v1/surveys/{{survey_id}}/responses/export/",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "surveys", "{{survey_id}}", "responses", "export", ""]
+						},
+						"description": "Trigger async CSV export via Celery. Email sent when ready."
+					},
+					"response": []
+				}
+			]
+		}
+	],
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://localhost:8000",
+			"type": "string"
+		},
+		{
+			"key": "username",
+			"value": "admin",
+			"type": "string"
+		},
+		{
+			"key": "password",
+			"value": "admin",
+			"type": "string"
+		},
+		{
+			"key": "csrftoken",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "org_id",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "managed_user_id",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "survey_id",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "section_id",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "field_id",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "response_id",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "session_token",
+			"value": "",
+			"type": "string"
+		}
+	]
+}

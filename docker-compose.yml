@@ -1,0 +1,95 @@
+services:
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: adsp_db
+      POSTGRES_USER: adsp_user
+      POSTGRES_PASSWORD: adsp_password
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U adsp_user -d adsp_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  web:
+    build: .
+    command: python manage.py runserver 0.0.0.0:8000
+    volumes:
+      - .:/app
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      - DEBUG=True
+      - SECRET_KEY=dev-secret-key-change-in-production
+      - DB_NAME=adsp_db
+      - DB_USER=adsp_user
+      - DB_PASSWORD=adsp_password
+      - DB_HOST=db
+      - DB_PORT=5432
+      - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/1
+      - ALLOWED_HOSTS=*
+
+  celery:
+    build: .
+    command: celery -A config worker -l info
+    volumes:
+      - .:/app
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      - DEBUG=True
+      - SECRET_KEY=dev-secret-key-change-in-production
+      - DB_NAME=adsp_db
+      - DB_USER=adsp_user
+      - DB_PASSWORD=adsp_password
+      - DB_HOST=db
+      - DB_PORT=5432
+      - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/1
+
+  celery-beat:
+    build: .
+    command: celery -A config beat -l info
+    volumes:
+      - .:/app
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      - DEBUG=True
+      - SECRET_KEY=dev-secret-key-change-in-production
+      - DB_NAME=adsp_db
+      - DB_USER=adsp_user
+      - DB_PASSWORD=adsp_password
+      - DB_HOST=db
+      - DB_PORT=5432
+      - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/1
+
+volumes:
+  postgres_data:
