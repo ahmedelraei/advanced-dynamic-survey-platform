@@ -224,7 +224,6 @@ class TestAuthenticationSecurity:
         
         assert response.status_code == 403
     
-    @pytest.mark.skip(reason="Object-level permissions not yet implemented")
     def test_user_cannot_access_other_users_surveys(self, api_client):
         """Test users cannot modify surveys they don't own."""
         user1 = create_user_with_group(
@@ -294,7 +293,6 @@ class TestInputValidation:
             group_name=SURVEY_ADMIN_GROUP
         )
     
-    @pytest.mark.skip(reason="Email validation not yet implemented in views")
     def test_email_field_validation(self, api_client, admin_user):
         """Test email field validates email format."""
         api_client.force_authenticate(user=admin_user)
@@ -332,7 +330,6 @@ class TestInputValidation:
             # Should fail validation
             assert response.status_code == 400
     
-    @pytest.mark.skip(reason="Number range validation not yet implemented in views")
     def test_number_field_validation(self, api_client, admin_user):
         """Test number field validates numeric input."""
         api_client.force_authenticate(user=admin_user)

@@ -35,8 +35,8 @@ class IsSurveyOwner(permissions.BasePermission):
 class CanManageSurvey(permissions.BasePermission):
     """
     Custom permission for survey management.
-    - Admins: Full access
-    - Analysts: Read + limited write (no delete)
+    - Admins: Full access to their own surveys
+    - Analysts: Read + limited write to their own surveys
     - Viewers: Read only
     """
     
@@ -59,8 +59,23 @@ class CanManageSurvey(permissions.BasePermission):
         return False
     
     def has_object_permission(self, request, view, obj):
-        # Owner has full access
-        if hasattr(obj, "owner") and obj.owner == request.user:
+        """Check object-level permissions."""
+        # Read permissions are allowed for authenticated users
+        if request.method in permissions.SAFE_METHODS:
             return True
         
-        return self.has_permission(request, view)
+        # Write permissions only for the owner
+        # Check if object has direct owner
+        if hasattr(obj, "owner"):
+            return obj.owner == request.user
+        
+        # Check if object belongs to a survey (for sections, fields, etc.)
+        if hasattr(obj, "survey"):
+            return obj.survey.owner == request.user
+        
+        # Check if object is a field that belongs to a section
+        if hasattr(obj, "section") and hasattr(obj.section, "survey"):
+            return obj.section.survey.owner == request.user
+        
+        return False
+

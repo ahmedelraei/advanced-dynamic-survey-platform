@@ -221,6 +221,10 @@ class LogicEngine:
         Returns:
             tuple: (is_valid, list of error messages)
         """
+        from django.core.validators import validate_email
+        from django.core.exceptions import ValidationError as DjangoValidationError
+        from apps.surveys.models import FieldType
+        
         errors = []
         
         for section in survey.sections.all():
@@ -241,6 +245,24 @@ class LogicEngine:
                 if field_visible and field.is_required:
                     if not field_value or (isinstance(field_value, str) and not field_value.strip()):
                         errors.append(f"Field '{field.label}' is required")
+                
+                # Validate email fields
+                if field_visible and field.field_type == FieldType.EMAIL and field_value:
+                    try:
+                        validate_email(field_value)
+                    except DjangoValidationError:
+                        errors.append(f"Field '{field.label}' must be a valid email address")
+                
+                # Validate number fields
+                if field_visible and field.field_type == FieldType.NUMBER and field_value is not None:
+                    try:
+                        num_value = float(field_value)
+                        if field.min_value is not None and num_value < field.min_value:
+                            errors.append(f"Field '{field.label}' must be at least {field.min_value}")
+                        if field.max_value is not None and num_value > field.max_value:
+                            errors.append(f"Field '{field.label}' must be at most {field.max_value}")
+                    except (ValueError, TypeError):
+                        errors.append(f"Field '{field.label}' must be a valid number")
         
         return len(errors) == 0, errors
 

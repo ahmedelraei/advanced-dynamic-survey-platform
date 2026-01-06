@@ -190,7 +190,6 @@ class TestSurveyAPI:
         assert new_survey.sections.count() == 1
         assert new_survey.sections.first().fields.count() == 1
     
-    @pytest.mark.skip(reason="Object-level permissions not yet implemented")
     def test_cannot_update_other_users_survey(self, api_client, admin_user):
         """Test users cannot update surveys they don't own."""
         other_user = create_user_with_group(
