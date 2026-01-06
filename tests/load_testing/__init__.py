@@ -1,0 +1,1 @@
+"""Initialize load testing package."""
